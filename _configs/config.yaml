@@ -1,0 +1,144 @@
+project_id: "eval_example"
+
+# Data paths - MTEB 2.x format
+# MTEB 2.x retrieval format uses three files:
+# - corpus: Contains documents with columns ['id', 'text', 'title' (optional)]
+# - queries: Contains queries with columns ['id', 'text']
+# - qrels: Contains relevance judgments with columns ['query-id', 'corpus-id', 'score']
+data:
+  # Specify data directory (files must be named corpus.parquet, queries.parquet, qrels.parquet)
+  mteb_data_dir: "./_data/mteb_user"
+
+# Embedding models to test
+# Models can be specified as:
+# 1. Simple string: "model-name: org/model-id" (uses defaults)
+# 2. Dict with options:
+#    - model: org/model-id (required)
+#    - use_query_prefix: true/false (adds "query: " prefix, default: false)
+#    - use_passage_prefix: true/false (adds "passage: " prefix, default: false)
+#    - use_query_prompt: true/false (passes prompt_name="query" to encode(), default: false)
+#    - use_passage_prompt: true/false (passes prompt_name="passage" to encode(), default: false)
+
+embeddings:
+  huggingface:
+    all-MiniLM-v2: sentence-transformers/all-MiniLM-L6-v2
+    e5-small:
+      model: intfloat/multilingual-e5-small
+      use_query_prefix: true
+      use_passage_prefix: true
+    # e5-base:
+    #   model: intfloat/multilingual-e5-base
+    #   use_query_prefix: true
+    #   use_passage_prefix: true
+    # e5-large:
+    #   model: intfloat/multilingual-e5-large
+    #   use_query_prefix: true
+    #   use_passage_prefix: true
+    granite: ibm-granite/granite-embedding-278m-multilingual
+    # jina-v2: jinaai/jina-embeddings-v2-base-de
+    jina-v3: jinaai/jina-embeddings-v3
+    # mxbai-embed-large-v1: mixedbread-ai/mxbai-embed-large-v1
+    # mxbai-embed-2d-large-v1: mixedbread-ai/mxbai-embed-2d-large-v1
+    # mxbai-embed-xsmall-v1: mixedbread-ai/mxbai-embed-xsmall-v1
+    mxbai-embed-de-large-v1: mixedbread-ai/deepset-mxbai-embed-de-large-v1
+    # snowflake-l:
+    #   model: Snowflake/snowflake-arctic-embed-l-v2.0
+    #   use_query_prompt: true
+    # potion-base-2M: minishlab/potion-base-2M
+    # potion-base-4M: minishlab/potion-base-4M
+    # potion-base-8M: minishlab/potion-base-8M
+    # potion-base-32M: minishlab/potion-base-32M
+    potion-retrieval-32M: minishlab/potion-retrieval-32M
+    # potion-multilingual-128M: minishlab/potion-multilingual-128M
+    # mdbr-leaf-ir: mongodb/mdbr-leaf-ir
+    # mdbr-leaf-ir-asym: mongodb/mdbr-leaf-ir-asym
+
+  # ColBERT late-interaction models (use pylate for multi-vector embeddings + MaxSim scoring)
+  # These models produce token-level embeddings and use late interaction for scoring.
+  # Hybrid search combines ColBERT MaxSim scores with Weaviate BM25 using alpha weighting.
+  # See: https://github.com/lightonai/pylate
+  # **ColBERT evaluation note**: The ColBERT evaluation computes MaxSim scores exhaustively for all query-document pairs, rather than using ANN or first-stage candidate retrieval. This full-corpus scoring approach may overstate practical retrieval performance compared to production systems that use approximate search. Results should be interpreted as an upper bound on ColBERT quality rather than realistic retrieval latency/throughput benchmarks. For hybrid search (alpha between 0 and 1), BM25 candidates are limited by `bm25_candidate_limit` (default: 1000) to avoid performance issues with large corpora.
+  # colbert:
+  #   mxbai-edge-colbert-17m: mixedbread-ai/mxbai-edge-colbert-v0-17m
+  #   mxbai-edge-colbert-32m: mixedbread-ai/mxbai-edge-colbert-v0-32m
+  #   answerai-colbert-small: answerdotai/answerai-colbert-small-v1
+  #   GTE-ModernColBERT: lightonai/GTE-ModernColBERT-v1
+
+  # openrouter:
+  #   models:
+  #     # OpenRouter embedding models (require OPENROUTER_API_KEY in .env file)
+  #     # See available models: https://openrouter.ai/models?fmt=cards&output_modalities=embeddings
+  #     openai-3-small: openai/text-embedding-3-small
+  #     openai-3-large: openai/text-embedding-3-large
+  #     mistral-embed-2312: mistralai/mistral-embed-2312
+  #     gemini-embedding-001: google/gemini-embedding-001
+  #     qwen3-embedding-4b: qwen/qwen3-embedding-4b
+  #     qwen3-embedding-8b: qwen/qwen3-embedding-8b
+  #     e5-large-v2: intfloat/e5-large-v2
+  #     multilingual-e5-large: intfloat/multilingual-e5-large
+  #     bge-base-en: baai/bge-base-en-v1.5
+  #   settings:
+  #     api_batch_size: 100 # Number of texts to send per API call
+  #     api_cost_warning_threshold: 5000 # Warn user if total samples (documents + queries) exceeds this number
+
+  device: "mps" # "cpu" | "cuda" | "auto" | "mps"
+  cache_dir: "./_cache_embeddings"
+
+# Weaviate hybrid search parameters
+search:
+  # 0.0 = pure lexical search (BM25)
+  # 1.0 = pure semantic vector search
+  # 0.7 = Weaviate's default value for hybrid search
+  alpha: [0.7, 1.0]
+
+  # Maximum candidates for BM25 retrieval in hybrid mode (ColBERT + BM25)
+  # Limits the number of documents retrieved for score normalization to avoid
+  # performance issues with large corpora. Set to null to retrieve all documents.
+  bm25_candidate_limit: 1000
+
+  # Per-metric K values
+  # Each metric can have its own list of K cutoffs
+  # Results will be computed at each specified K for each metric
+  metrics:
+    mrr_k: [10] # Mean Reciprocal Rank @ K
+    hit_rate_k: [3] # Hit Rate (Success Rate) @ K
+
+  # Include BM25 baseline (pure lexical search with alpha=0.0)
+  include_bm25_baseline: true
+
+# Output
+output:
+  results_dir: "./_results"
+
+# Visualization settings
+visualization:
+  fig_size_x: 16
+  title_size: 24
+  title_pad: 20
+  axis_label_size: 9
+  row_label_size: 9
+  bar_label_offset: 0.02
+  recall_dynamic_xlim: true # If true, set x-limits to ~10% below lowest and ~10% above highest recall value
+
+# Model settings
+model:
+  embedding_batch_size: 32
+  max_document_tokens: 512 # Maximum number of tokens per document for embedding
+
+# Query generation settings
+query_generation:
+  model: "google/gemini-2.5-flash-lite-preview-09-2025"
+  max_workers: 50
+  max_retries: 3
+  temperature: 1.0 # Higher temperature for more diversity in generated queries
+  max_output_tokens: 500 # Maximum number of tokens in LLM response
+
+  # Ollama settings (used when --provider ollama is specified)
+  ollama:
+    model: "ministral-3:14b"
+    url: "http://localhost:11434/v1"
+    max_workers: 1 
+
+# Evals cache
+evals:
+  cache_dir: "./_cache_evals"
