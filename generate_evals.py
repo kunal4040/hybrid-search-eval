@@ -687,11 +687,26 @@ def main() -> None:
                             style="dim",
                         )
 
+                # Build model loading kwargs
+                model_kwargs: dict[str, object] = {
+                    "device": model_device,
+                    "trust_remote_code": True,
+                }
+
+                # Check if this is a Snowflake model - they require xformers by default
+                # but we can disable memory efficient attention to avoid this dependency
+                if "snowflake" in model_id.lower():
+                    model_kwargs["config_kwargs"] = {
+                        "use_memory_efficient_attention": False
+                    }
+                    console.print(
+                        "   ⚠️  [yellow]Snowflake model: disabling xformers requirement[/yellow]",
+                        style="dim",
+                    )
+
                 console.print("   Loading model...", style="cyan")
                 try:
-                    model = SentenceTransformer(
-                        model_id, device=model_device, trust_remote_code=True
-                    )
+                    model = SentenceTransformer(model_id, **model_kwargs)
                     memory_after_model_mb = get_memory_usage_mb()
                     model_memory_mb = max(0.0, memory_after_model_mb - memory_before_mb)
                     console.print(
