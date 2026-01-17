@@ -28,6 +28,7 @@
 - **MTEB compatible**: Any MTEB 2.x retrieval dataset can be used out of the box
 - **Smart caching**: Hash-based caching of embeddings and evaluation results
 - **Metrics and visualization**: MRR@K, Hit@K (success rate), embedding latency, and memory consumption charts
+- **Dashboard summary**: Interactive, sortable and filterable table of results (self-contained HTML)
 
 This tool complements our existing [semantic search evaluation framework](https://github.com/machinelearningZH/semantic-search-eval).
 
