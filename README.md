@@ -247,7 +247,7 @@ The evaluation generates the following visualization charts:
 2. **Hit Rate (Success Rate)**: Percentage of queries where a relevant document was found in the top-k results. Useful for understanding "was any relevant result found?"
 3. **Embedding Latency**: Time taken to generate embeddings for all documents per model.
 4. **Memory Consumption**: RAM usage during model loading and embedding generation.
-5. **Model Tradeoffs**: Bubble chart showing quality vs latency vs memory tradeoffs. Bubble size indicates memory consumption. [Pareto-optimal](https://en.wikipedia.org/wiki/Pareto_front) models (best tradeoffs) are highlighted with gold edges. BM25 and API models without memory data are shown as squares.
+5. **Model Tradeoffs**: Bubble chart showing quality vs latency vs memory tradeoffs. Bubble size indicates memory consumption. [Pareto-optimal](https://en.wikipedia.org/wiki/Pareto_front) models (best tradeoffs) are highlighted with gold edges. BM25 and API models without memory data are shown as squares. The pareto optimal models are also highlighted in the interactive dashboard.
 
 ![Chart Tradeoffs](_imgs/04_tradeoffs.png)
 
